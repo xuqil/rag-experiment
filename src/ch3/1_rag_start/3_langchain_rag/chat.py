@@ -1,83 +1,62 @@
 import os
 
-import bs4
+import chromadb
+from dotenv import load_dotenv
 from langchain import hub
-from langchain_community.document_loaders import WebBaseLoader
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.document_loaders import DirectoryLoader, TextLoader
+from langchain_community.embeddings.dashscope import DashScopeEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_core.documents import Document
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langgraph.graph import START, StateGraph
-from typing_extensions import List, TypedDict
 
-# Load and chunk contents of the blog
-loader = WebBaseLoader(
-    web_paths=("https://lilianweng.github.io/posts/2023-06-23-agent/",),
-    bs_kwargs=dict(
-        parse_only=bs4.SoupStrainer(
-            class_=("post-content", "post-title", "post-header")
-        )
-    ),
-)
-docs = loader.load()
-
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-all_splits = text_splitter.split_documents(docs)
-
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-
-# Index chunks
-vector_store = Chroma(
-    collection_name="example_collection",
-    embedding_function=embeddings,
-    persist_directory="./chroma_langchain_db",  # Where to save data locally, remove if not necessary
-)
-
-_ = vector_store.add_documents(documents=all_splits)
-
-# Define prompt for question-answering
-# N.B. for non-US LangSmith endpoints, you may need to specify
-# api_url="https://api.smith.langchain.com" in hub.pull.
-prompt = hub.pull("rlm/rag-prompt")
-
-
-# Define state for application
-class State(TypedDict):
-    question: str
-    context: List[Document]
-    answer: str
-
-
-# Define application steps
-def retrieve(state: State):
-    retrieved_docs = vector_store.similarity_search(state["question"])
-    return {"context": retrieved_docs}
-
+load_dotenv()
 
 llm = ChatOpenAI(
     api_key=os.environ.get("API_KEY"),
     base_url=os.environ.get("API_BASE_URL"),
     model=os.getenv("MODEL_NAME"),
-    # other params...
 )
+embed_model = DashScopeEmbeddings(model=os.getenv("EMBED_MODEL_NAME"))
 
+# 加载与读取文档
+loader = DirectoryLoader('../../../../data', glob='*.txt', exclude='*tips*.txt', loader_cls=TextLoader,
+                         loader_kwargs={"encoding": "utf-8"})
+documents = loader.load()
 
-def generate(state: State):
-    docs_content = "\n\n".join(doc.page_content for doc in state["context"])
-    messages = prompt.invoke({"question": state["question"], "context": docs_content})
-    response = llm.invoke(messages)
-    return {"answer": response.content}
+# 分割文档
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=20)
+splits = text_splitter.split_documents(documents)
 
+# 准备向量存储
+chroma = chromadb.HttpClient(host=os.getenv("CHROMADB_HOST"), port=int(os.getenv("CHROMADB_PORT")))
+try:
+    chroma.delete_collection(os.getenv("CHROMADB_COLLECTION"))
+except Exception:
+    pass
+collection = chroma.get_or_create_collection(name=os.getenv("CHROMADB_COLLECTION"), metadata={'hnsw:space': 'cosine'})
+db = Chroma(client=chroma, collection_name=os.getenv("CHROMADB_COLLECTION"), embedding_function=embed_model)
 
-def main():
-    # Compile application and test
-    graph_builder = StateGraph(State).add_sequence([retrieve, generate])
-    graph_builder.add_edge(START, "retrieve")
-    graph = graph_builder.compile()
-    response = graph.invoke({"question": "What is Task Decomposition?"})
-    print(response["answer"])
+# 存储到向量库中，构造索引
+db.add_documents(splits)
 
+# 使用检索器
+retrieve = db.as_retriever()
 
-if __name__ == '__main__':
-    main()
+# 构造 RAG 链
+prompt = hub.pull("rlm/rag-prompt")
+rag_chain = (
+        {"context": retrieve | (lambda docs: "\n\n".join(doc.page_content for doc in docs)),
+         "question": RunnablePassthrough()}
+        | prompt
+        | llm
+        | StrOutputParser()
+)
+while True:
+    user_input = input("问题：")
+    if user_input.lower() == "quit":
+        break
+
+    response = rag_chain.invoke(user_input)
+    print("AI助手：", response)
