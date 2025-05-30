@@ -14,8 +14,10 @@ dependencies = [
     "langgraph>=0.4.7",
     "llama-index",
     "llama-index-embeddings-dashscope>=0.3.0",
+    "llama-index-embeddings-ollama>=0.6.0",
     "llama-index-llms-openai-like>=0.3.5",
     "llama-index-vector-stores-chroma>=0.4.1",
     "ollama>=0.4.8",
     "pip>=25.1.1",
+    "psycopg2>=2.9.10",
 ]
