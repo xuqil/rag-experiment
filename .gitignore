@@ -8,6 +8,7 @@ wheels/
 chroma_db
 .env
 .idea
+storage
 
 # Virtual environments
 .venv

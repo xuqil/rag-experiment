@@ -1562,6 +1562,19 @@ wheels = [
 ]
 
 [[package]]
+name = "llama-index-postprocessor-dashscope-rerank"
+version = "0.3.0"
+source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
+dependencies = [
+    { name = "dashscope" },
+    { name = "llama-index-core" },
+]
+sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/b8/81/93ef104482991f7bbd0a3168f083d6f6b1804643638c114cbebde088e077/llama_index_postprocessor_dashscope_rerank-0.3.0.tar.gz", hash = "sha256:bd8d9f99e029c87489b2e7bfd5ae0830377c73f735d0b03608e7039752c0097d", size = 3321 }
+wheels = [
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/fe/fa/b6bb07968514ca3c4c6f3f5f83ceae3aca318b96c44a710bc7e1898469bf/llama_index_postprocessor_dashscope_rerank-0.3.0-py3-none-any.whl", hash = "sha256:f1c4d15ad09d24ef9aed08c4fbd3119c50bac0f764d805ab619a401b6ecbb262", size = 3745 },
+]
+
+[[package]]
 name = "llama-index-program-openai"
 version = "0.3.1"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
@@ -2910,6 +2923,7 @@ dependencies = [
     { name = "llama-index-embeddings-dashscope" },
     { name = "llama-index-embeddings-ollama" },
     { name = "llama-index-llms-openai-like" },
+    { name = "llama-index-postprocessor-dashscope-rerank" },
     { name = "llama-index-vector-stores-chroma" },
     { name = "ollama" },
     { name = "pip" },
@@ -2929,6 +2943,7 @@ requires-dist = [
     { name = "llama-index-embeddings-dashscope", specifier = ">=0.3.0" },
     { name = "llama-index-embeddings-ollama", specifier = ">=0.6.0" },
     { name = "llama-index-llms-openai-like", specifier = ">=0.3.5" },
+    { name = "llama-index-postprocessor-dashscope-rerank", specifier = ">=0.3.0" },
     { name = "llama-index-vector-stores-chroma", specifier = ">=0.4.1" },
     { name = "ollama", specifier = ">=0.4.8" },
     { name = "pip", specifier = ">=25.1.1" },
